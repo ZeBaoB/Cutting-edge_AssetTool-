@@ -88,3 +88,42 @@ def plot_evolutions_full(Dict_evolutions, model, constraints, strategy, paramete
     plt.grid()
     plt.legend()
     plt.show()
+
+
+def calibrate_BS_model(data):
+    # Compute the parameters of the Black-Scholes model
+
+    # Calcul du vecteur de rendement moyen annuel
+    mu_annuel = np.log((data.iloc[-1, :]/data.iloc[0,:])) / (data.index[-1] - data.index[0]).days * 365.25
+    delta_année = data.index.to_series().diff().dt.days.iloc[1:] / 365.25
+    deltat_r = pd.DataFrame(delta_année.values[:, None] * mu_annuel.values, columns=mu_annuel.index, index=delta_année.index)
+    nb_jour_pan = data.shape[0] / (data.index[-1] - data.index[0]).days * 365.25
+    Volatilite_annuel = np.sqrt((np.log((data/data.shift(1)).iloc[1:,:]) - deltat_r).var() * nb_jour_pan)
+    mat_correlation = (np.log((data/data.shift(1)).iloc[1:,:]) - deltat_r).corr()
+
+    return mu_annuel, Volatilite_annuel, mat_correlation
+
+def generate_BS_scenarios(parameters, beginDate, endDate, number_of_scenarios):
+    # Generate the scenarios for the Black-Scholes model
+    returns = parameters["Returns"]
+    volatilities = parameters["Volatilities"]
+    Correlation_matrix = parameters["Correlation matrix"]
+    nb_stocks = len(returns)
+    # generate dates excluding Saturdays and Sundays
+    dates = pd.date_range(start=beginDate, end=endDate, freq='B')
+    nb_periods = len(dates)
+    # Calculate the adjustment factor for volatilities
+    delta_t = dates.to_series().diff().dt.days[1:] / 365.25
+    delta_t = np.insert(delta_t, 0, 0)
+    adjustment_factor = np.sqrt(delta_t)
+    # Generate scenarios of log-returns
+    log_returns = np.random.normal(0, 1, (nb_periods, nb_stocks, number_of_scenarios))
+    cholesky_matrix = np.linalg.cholesky(Correlation_matrix)
+    for i in range(number_of_scenarios):
+        log_returns[:, :, i] = log_returns[:, :, i] @ cholesky_matrix.T
+    log_returns = log_returns * (volatilities.values[:, None] * adjustment_factor[:, None, None])
+    # Add the annual average return
+    mean_returns = (returns.values[:, None] / 256.2305133079848) * delta_t[:, None, None]
+    log_returns += mean_returns
+    scenarios = {f'Scenario {i+1}': pd.DataFrame(log_returns[:, :, i], index=dates, columns=volatilities.index) for i in range(number_of_scenarios)}
+    return scenarios

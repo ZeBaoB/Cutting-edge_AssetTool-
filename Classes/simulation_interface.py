@@ -1,21 +1,15 @@
 import warnings
+from abc import ABC, abstractmethod
 
-class Simulation:
-    def __init__(self, nb_scenarios, model, strategy, parameters, rf = 0.02):
-        """
-        nb_scenarios : int
-        model : str ("BS" or "On verra")
-        strategy : str ("Buy and hold" or "Rebalancing")
-        parameters : dict
-            - Returns : pd.Series (index : stock names)
-            - Volatilities : pd.Series (index : stock names)
-            - Correlation matrix : pd.DataFrame (index and columns : stock names)
-            - Begin date : pd.Timestamp
-            - End date : pd.Timestamp
-            - Rebalancing period : int (only for "Rebalancing" strategy)
-        rf : float (risk-free rate)
-        """
-        pass
+class Simulation(ABC):
+
+    def __new__(cls, *args, **kwargs):
+        if cls is Simulation:
+            from .simulation_implementation import SimulationImpl
+            instance = super().__new__(SimulationImpl)
+            #instance.__init__(*args, **kwargs)
+            return instance
+        return super().__new__(cls)
 
     def set_nb_scenarios(self, nb_scenarios):
         """
@@ -43,7 +37,7 @@ class Simulation:
         if self.strategy == "Rebalancing":
             if "Rebalancing period" not in parameters:
                 raise ValueError("Rebalancing strategy requires a rebalancing period in the parameters dictionnary.\nExample : {'Rebalancing period' : 30}")
-            elif  parameters["Rebalancing period"] < 0:
+            elif parameters["Rebalancing period"] < 0:
                 raise ValueError("Rebalancing period must be strickly positive")
         elif self.strategy == "Buy and hold":
             if "Rebalancing period" in parameters and parameters["Rebalancing period"] > 0:
@@ -78,32 +72,46 @@ class Simulation:
         """
         self.contraints = contraints
 
+    def set_allocation(self, allocation):
+        self.parameters["Allocation"] = allocation
+    def set_scenarios(self, scenarios):
+        self.scenarios = scenarios
+    def set_evolutions(self, evolutions):
+        self.evolutions = evolutions
+
+    @abstractmethod
     def compute_allocation(self):
         """
         Calculate optimal portfolio allocation based on constraints and ESG data
         """
         pass
 
+    @abstractmethod
     def generate_scenarios(self):
         """
         Generate scenarios of log-returns based on the model and the parameters
         """
         pass
-
+    
+    @abstractmethod
     def generate_evolutions(self):
         """
         Generate the evolution of the portfolio value for each scenario
         """
         pass
 
+    @abstractmethod
     def compute_metrics(self):
         """
         Compute the metrics of the simulation
         """
         pass
 
+    @abstractmethod
     def plot(self, type_plot="full", alpha=0.95, figsize=(14, 6)):
         """
         Plot the evolution of the portfolio value for each scenario
         """
         pass
+
+__all__ = ["Simulation"]
