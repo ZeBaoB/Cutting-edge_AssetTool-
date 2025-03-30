@@ -80,12 +80,34 @@ class SimulationImpl(Simulation):
     def generate_scenarios(self):
         self.scenarios = self.model.generate_logreturns(self.parameters["Begin date"], self.parameters["End date"], self.nb_scenarios)
 
-    def generate_evolutions(self):
+    def generate_evolutions(self, T_allocation = 0):
         nb_periods = self.scenarios["Scenario 1"].shape[1]
         nb_stocks = self.scenarios["Scenario 1"].shape[0]
         T_rebalancement = self.parameters["Rebalancing period"] if self.strategy == "Rebalancing" else -1
         allocation = self.parameters["Allocation"]
-        self.evolutions = {f'Evolution {i+1}' : generate_evolution(self.scenarios[f"Scenario {i+1}"], allocation, T_rebalancement) for i in range(self.nb_scenarios)}
+        if T_allocation <= 0:
+            self.evolutions = {f'Evolution {i+1}' : generate_evolution(self.scenarios[f"Scenario {i+1}"], allocation, T_rebalancement) for i in range(self.nb_scenarios)}
+        else:
+            self.evolutions = {}
+            for i in range(self.nb_scenarios):
+                porfolio_value = 1.0
+                scenario = self.scenarios[f"Scenario {i+1}"]
+                evolution = []
+                current_allocation = allocation.copy()
+                intervals = range(0, scenario.shape[0], T_allocation)
+                for start in intervals:
+                    end = min(start + T_allocation, scenario.shape[0])
+                    # Recompute allocation at the start of the intervals
+                    if start != 0:
+                        model_used = self.model
+                        model_used.fit(np.exp(scenario.iloc[start-T_allocation:end-T_allocation, :].cumsum(axis=0)))
+                        self.set_model(model_used)
+                        self.compute_allocation()
+                        current_allocation = self.parameters["Allocation"]
+                    # Generate evolution for the interval
+                    new_evol, porfolio_value = generate_evolution(scenario.iloc[start:end, :], current_allocation, T_rebalancement = T_rebalancement, initial_portfolio_value = porfolio_value, get_portfolio_value = True)
+                    evolution.append(new_evol)
+                self.evolutions[f'Evolution {i+1}'] = pd.concat(evolution, axis=0)
 
     def compute_metrics(self, alpha=0.95):
         evolutions = self.evolutions

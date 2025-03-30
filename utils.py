@@ -3,7 +3,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def generate_evolution(logReturn, allocation, T_rebalancement=-1):
+def generate_evolution(logReturn, allocation, T_rebalancement=-1, initial_portfolio_value = 1.0, get_portfolio_value = False):
+    """
+    initially, sum(allocation) can be different of 1
+    """
+    
     nb_periods = logReturn.shape[0]
     nb_stocks = logReturn.shape[1]
 
@@ -11,17 +15,21 @@ def generate_evolution(logReturn, allocation, T_rebalancement=-1):
     
     if T_rebalancement == -1:
         # Buy and hold strategy
-        evolution = np.exp(np.cumsum(logReturn)) * allocation
+        evolution = np.exp(np.cumsum(logReturn)) * initial_portfolio_value * allocation
     else:
         # Rebalancing strategy
-        evolution.iloc[:T_rebalancement, :] = np.exp(np.cumsum(logReturn.iloc[:T_rebalancement, :])) * allocation
+        evolution.iloc[:T_rebalancement, :] = np.exp(np.cumsum(logReturn.iloc[:T_rebalancement, :]))* initial_portfolio_value * allocation
         
         for i in range(T_rebalancement, nb_periods, T_rebalancement):
             evolution.iloc[i:i+T_rebalancement, :] = np.exp(np.cumsum(logReturn.iloc[i:i+T_rebalancement, :])) * evolution.iloc[i-1, :].sum() * allocation
         last_period = (nb_periods//T_rebalancement)*T_rebalancement
         evolution.iloc[last_period:, :] = np.exp(np.cumsum(logReturn.iloc[last_period:, :])) * evolution.iloc[last_period-1, :].sum() * allocation
-    
-    return evolution
+        
+    portfolio_value = evolution.iloc[-1,:].sum()
+    if get_portfolio_value :
+        return evolution, portfolio_value
+    else :
+        return evolution
 
 def plot_evolutions_full(Dict_evolutions, model, constraints, strategy, parameters, alpha = 0.95, figsize=(14, 6)):
     
