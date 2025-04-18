@@ -23,6 +23,12 @@ class Simulation(ABC):
         """
         self.model = model
     
+    def set_model_allocation(self, model_allocation):
+        """
+        Set the model used for the allocation
+        """
+        self.model_allocation = model_allocation
+    
     def set_strategy(self, strategy):
         """
         Set the strategy used for the simulation
@@ -61,7 +67,7 @@ class Simulation(ABC):
         """
         self.dataESG = dataESG
 
-    def set_contraints(self, contraints):
+    def set_constraints(self, constraints):
         """
         dictionnary containing the types and the values of contraints of the optimization problem
 
@@ -70,7 +76,7 @@ class Simulation(ABC):
             "Value : example [0, 0.1, ...]
         }
         """
-        self.contraints = contraints
+        self.constraints = constraints
 
     def set_allocation(self, allocation):
         self.parameters["Allocation"] = allocation

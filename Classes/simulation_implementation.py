@@ -30,13 +30,14 @@ class SimulationImpl(Simulation):
         self.strategy = strategy
         self.parameters = parameters
         self.rf = rf
+        self.model_allocation = model
 
     def compute_allocation(self):
-        if self.model.model_name == "BS":
+        if self.model_allocation.model_name == "BS":
             # Define objective function based on criteria
-            returns = self.model.parameters["Returns"]
-            volatilities = self.model.parameters["Volatilities"]
-            Correlation_matrix = self.model.parameters["Correlation matrix"]
+            returns = self.model_allocation.parameters["Returns"]
+            volatilities = self.model_allocation.parameters["Volatilities"]
+            Correlation_matrix = self.model_allocation.parameters["Correlation matrix"]
             covMatrix = np.diag(volatilities) @ Correlation_matrix @ np.diag(volatilities)
             rf = self.rf
             dataESG = self.dataESG
@@ -50,25 +51,25 @@ class SimulationImpl(Simulation):
             portfolio_variance = cp.quad_form(w, covMatrix)
             constraints = [cp.sum(w) == 1, w >= 0]
             
-            if "Maximal allocation" in self.contraints["List"]:
-                constraints.append( w <= self.contraints["Value"][self.contraints["List"].index("Maximal allocation")])
-            if "Minimal return" in self.contraints["List"]:
-                constraints.append( portfolio_return >= self.contraints["Value"][self.contraints["List"].index("Minimal return")])
+            if "Maximal allocation" in self.constraints["List"]:
+                constraints.append( w <= self.constraints["Value"][self.constraints["List"].index("Maximal allocation")])
+            if "Minimal return" in self.constraints["List"]:
+                constraints.append( portfolio_return >= self.constraints["Value"][self.constraints["List"].index("Minimal return")])
                 objective = cp.Minimize(portfolio_variance)
-            if "Maximal volatility" in self.contraints["List"]:
-                constraints.append(portfolio_variance <= (self.contraints["Value"][self.contraints["List"].index("Maximal volatility")]) ** 2)
+            if "Maximal volatility" in self.constraints["List"]:
+                constraints.append(portfolio_variance <= (self.constraints["Value"][self.constraints["List"].index("Maximal volatility")]) ** 2)
                 objective = cp.Maximize(portfolio_return)
             else:
                 objective = cp.Maximize(portfolio_return)
 
             # Define optimization ESG problem
             for i, criteria in enumerate(self.dataESG.columns):
-                if "Maximal " + criteria in self.contraints["List"]:
-                    posCriteria = self.contraints["List"].index("Maximal " + criteria)
-                    constraints.append(cp.sum(cp.multiply(w, dataESG[criteria])) <= self.contraints["Value"][posCriteria])
-                elif "Minimal " + criteria in self.contraints["List"]:
-                    posCriteria = self.contraints["List"].index("Minimal " + criteria)
-                    constraints.append(cp.sum(cp.multiply(w, dataESG[criteria])) >= self.contraints["Value"][posCriteria])
+                if "Maximal " + criteria in self.constraints["List"]:
+                    posCriteria = self.constraints["List"].index("Maximal " + criteria)
+                    constraints.append(cp.sum(cp.multiply(w, dataESG[criteria])) <= self.constraints["Value"][posCriteria])
+                elif "Minimal " + criteria in self.constraints["List"]:
+                    posCriteria = self.constraints["List"].index("Minimal " + criteria)
+                    constraints.append(cp.sum(cp.multiply(w, dataESG[criteria])) >= self.constraints["Value"][posCriteria])
 
             # Define optimization problem
             prob = cp.Problem(objective, constraints)
@@ -97,11 +98,11 @@ class SimulationImpl(Simulation):
                 intervals = range(0, scenario.shape[0], T_allocation)
                 for start in intervals:
                     end = min(start + T_allocation, scenario.shape[0])
-                    # Recompute allocation at the start of the intervals
+                    # Recompute allocation at the start of the intervals, BS model approach
                     if start != 0:
-                        model_used = self.model
+                        model_used = MarketModel(model_name="BS")
                         model_used.fit(np.exp(scenario.iloc[start-T_allocation:end-T_allocation, :].cumsum(axis=0)))
-                        self.set_model(model_used)
+                        self.set_model_allocation(model_used)
                         self.compute_allocation()
                         current_allocation = self.parameters["Allocation"]
                     # Generate evolution for the interval
@@ -125,7 +126,7 @@ class SimulationImpl(Simulation):
         if type_plot not in ["full", "summary"]:
             raise ValueError("type_plot must be either 'full' or 'summary'")
         if type_plot == "full":
-            plot_evolutions_full(self.evolutions, self.model.model_name, self.contraints, self.strategy, self.parameters, alpha=alpha, figsize=figsize)
+            plot_evolutions_full(self.evolutions, self.model.model_name, self.constraints, self.strategy, self.parameters, alpha=alpha, figsize=figsize)
 
 # Attach methods to Simulation class
 #Simulation.__init__ = init
