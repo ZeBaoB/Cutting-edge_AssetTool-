@@ -141,10 +141,10 @@ def black_scholes_model(data):
     st.plotly_chart(fig, use_container_width=True)
     
     # Generate scenarios
-    st.subheader("Generate Scenarios")
+    st.subheader("Generate Scenario")
     
     # Scenario parameters
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         begin_date = st.date_input("Begin Date", value=datetime.now().date())
@@ -152,52 +152,42 @@ def black_scholes_model(data):
     with col2:
         end_date = st.date_input("End Date", value=(datetime.now() + timedelta(days=365)).date())
     
-    with col3:
-        num_scenarios = st.number_input("Number of Scenarios", min_value=1, max_value=100, value=5)
+    num_scenarios = 1
     
     if begin_date >= end_date:
         st.warning("Begin date must be before end date.")
         return
     
-    # Generate scenarios
-    scenarios_available = False
-    if st.button("Generate Scenarios"):
-        with st.spinner("Generating scenarios..."):
-            scenarios_BS = market_model_BS.generate_logreturns(
+    # Generate scenario
+    if st.button("Generate Scenario"):
+        with st.spinner("Generating scenario..."):
+            scenarios_BS, _ = market_model_BS.generate_logreturns(
                 begin_date.strftime('%Y-%m-%d'),
                 end_date.strftime('%Y-%m-%d'),
-                int(num_scenarios)
+                num_scenarios
             )
-            scenarios_available = True
-    
-    if scenarios_available:
-        # Select company to visualize
-        company = st.selectbox("Select Company to Visualize", selected_companies)
+            
+        # Plot cumulative returns
+        fig = go.Figure()
+        scenario = scenarios_BS[f'Scenario 1']
+        for columns in scenario.columns:
+            cumulative_returns = np.exp(np.cumsum(scenario[columns]))
+            fig.add_trace(go.Scatter(
+                x=scenario.index,
+                y=cumulative_returns,
+                mode='lines',
+                name=columns
+            ))
         
-        if company:
-            # Plot cumulative returns
-            fig = go.Figure()
-            
-            for i in range(1, int(num_scenarios) + 1):
-                scenario = scenarios_BS[f'Scenario {i}']
-                cumulative_returns = np.exp(np.cumsum(scenario[company]))
-                
-                fig.add_trace(go.Scatter(
-                    x=scenario.index,
-                    y=cumulative_returns,
-                    mode='lines',
-                    name=f'Scenario {i}'
-                ))
-            
-            fig.update_layout(
-                template='plotly_dark',
-                title=f"Cumulative Returns for {company}",
-                xaxis_title="Date",
-                yaxis_title="Cumulative Return",
-                height=500
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(
+            template='plotly_dark',
+            title=f"Cumulative Returns for the stocks",
+            xaxis_title="Date",
+            yaxis_title="Cumulative Return",
+            height=500
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
 
 def heston_model(data):
     """Heston model calibration and visualization"""
@@ -272,11 +262,11 @@ def heston_model(data):
     
     st.plotly_chart(fig, use_container_width=True)
     
-    # Generate scenarios
-    st.subheader("Generate Scenarios")
+    # Generate scenario
+    st.subheader("Generate Scenario")
 
     # Scenario parameters
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         begin_date = st.date_input("Begin Date", value=datetime.now().date())
@@ -284,48 +274,59 @@ def heston_model(data):
     with col2:
         end_date = st.date_input("End Date", value=(datetime.now() + timedelta(days=365)).date())
     
-    with col3:
-        num_scenarios = st.number_input("Number of Scenarios", min_value=1, max_value=100, value=5)
+    num_scenarios = 1
     
     if begin_date >= end_date:
         st.warning("Begin date must be before end date.")
         return
     
-    # Generate scenarios
-    if st.button("Generate Scenarios"):
-        with st.spinner("Generating scenarios..."):
-            scenarios_Heston = market_model_Heston.generate_logreturns(
+    # Generate scenario
+    if st.button("Generate Scenario"):
+        with st.spinner("Generating scenario..."):
+            scenarios_Heston, Var_scenarios = market_model_Heston.generate_logreturns(
                 begin_date.strftime('%Y-%m-%d'),
                 end_date.strftime('%Y-%m-%d'),
-                int(num_scenarios)
+                num_scenarios
             )
-        
-        # Select company to visualize
-        company = st.selectbox("Select Company to Visualize", selected_companies)
         
         # Plot cumulative returns
         fig = go.Figure()
-        
-        for i in range(1, int(num_scenarios) + 1):
-            scenario = scenarios_Heston[f'Scenario {i}']
-            cumulative_returns = np.exp(np.cumsum(scenario[company]))
-            
+        scenario = scenarios_Heston[f'Scenario 1']
+        for columns in scenario.columns:
+            cumulative_returns = np.exp(np.cumsum(scenario[columns]))
             fig.add_trace(go.Scatter(
                 x=scenario.index,
                 y=cumulative_returns,
                 mode='lines',
-                name=f'Scenario {i}'
+                name=columns
             ))
-        
         fig.update_layout(
             template='plotly_dark',
-            title=f"Cumulative Returns for {company}",
+            title=f"Cumulative Returns for the stocks",
             xaxis_title="Date",
             yaxis_title="Cumulative Return",
             height=500
         )
-        
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Plot variance scenarios
+        fig2 = go.Figure()
+        scenario_var = Var_scenarios[f'Scenario 1']
+        for columns in scenario_var.columns:
+            fig2.add_trace(go.Scatter(
+            x=scenario_var.index,
+            y=scenario_var[columns],
+            mode='lines',
+            name=columns
+            ))
+        fig2.update_layout(
+            template='plotly_dark',
+            title=f"Variance for the stocks",
+            xaxis_title="Date",
+            yaxis_title="Variance",
+            height=500
+        )
+        st.plotly_chart(fig2, use_container_width=True)
 
 
 

@@ -52,6 +52,7 @@ class MarketModelImpl(MarketModel):
         dict
             Dictionary of scenarios with keys 'Scenario 1', 'Scenario 2', etc.
         """
+        Var_scenarios = None
         # Generate the log returns
         if self.model_name == "BS":
             scenarios = generate_BS_scenarios(self.parameters, begin_date, end_date, number_of_scenarios)
@@ -64,4 +65,4 @@ class MarketModelImpl(MarketModel):
             # Default or placeholder for other models
             scenarios = None
             
-        return scenarios
+        return scenarios, Var_scenarios

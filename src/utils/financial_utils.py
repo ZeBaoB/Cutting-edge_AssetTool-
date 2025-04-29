@@ -100,7 +100,7 @@ def generate_BS_scenarios(parameters, begin_date, end_date, number_of_scenarios)
     
     return scenarios
 
-def calibrate_heston_model(data : pd.DataFrame, window : int = 15,  params_init : list = [3., 0.15], bounds : list = [(1e-3, 40.), (1e-3, 1.)]):
+def calibrate_heston_model(data : pd.DataFrame, window : int = 20,  params_init : list = [3., 0.15], bounds : list = [(1e-3, 100.), (1e-3, 1.)]):
     """
     Calibrate the Heston model parameters using the historical data of the stocks.
     The function returns the parameters of the model and the correlation matrix of the Brownian motions.
@@ -202,7 +202,7 @@ def generate_Heston_scenarios(df_params : pd.DataFrame, dBdW : pd.DataFrame, beg
     sigma = df_params.loc['sigma']
     nb_stocks = len(mu)
     if V_init is None:
-        V_init = df_params.loc['V_end']
+        V_init = df_params.loc['theta']
     # generate dates excluding Saturdays and Sundays
     dates = pd.date_range(start=beginDate, end=endDate, freq='B')
     nb_periods = len(dates)
@@ -221,7 +221,7 @@ def generate_Heston_scenarios(df_params : pd.DataFrame, dBdW : pd.DataFrame, beg
         variance_path = np.zeros((nb_periods, nb_stocks))
         variance_path[0, :] = V_init.values
         for j in range(1, nb_periods):
-            variance_path[j, :] = np.maximum(variance_path[j-1, :] + kappa.values * (theta.values - variance_path[j-1, :]) * delta_t[j] + sigma.values * np.sqrt(variance_path[j-1, :]) * lReturns_Variance[j, nb_stocks:, i], 0) * delta_t[j]**0.5
+            variance_path[j, :] = np.maximum(variance_path[j-1, :] + kappa.values * (theta.values - variance_path[j-1, :]) * delta_t[j] + sigma.values * np.sqrt(variance_path[j-1, :]) * lReturns_Variance[j, nb_stocks:, i] * (delta_t[j]**0.5) , 0)
         variance_paths[f"Scenario {i+1}"] = pd.DataFrame(variance_path, index=dates, columns=df_params.columns)
     
     # Log return paths
