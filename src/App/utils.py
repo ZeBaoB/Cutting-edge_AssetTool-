@@ -73,7 +73,7 @@ def load_data():
     
     return histo_CAC40_10y.dropna(), data_10y_dic, data_1min_dic, data_esg, cac40_weights
 
-def black_scholes_model(data):
+def black_scholes_model(/data):
     """Black-Scholes model calibration and visualization"""
     st.subheader("Presentation Black-Scholes Model")
     # Display the dynamic in the model
@@ -108,26 +108,21 @@ def black_scholes_model(data):
         market_model_BS = MarketModel(model_name="BS")
         market_model_BS.fit(filtered_data)
     
-    # Display model parameters
-    
-    
     # Create DataFrame with parameters
     params_df = pd.DataFrame({
         'Annual Return': market_model_BS.parameters['Returns'],
         'Annual Volatility': market_model_BS.parameters['Volatilities']
     })
-    
     st.dataframe(params_df.style.background_gradient(cmap='viridis'))
     
     # Plot correlation matrix
     corr_matrix = market_model_BS.parameters['Correlation matrix']
-    
     fig = px.imshow(
         corr_matrix,
         x=selected_companies,
         y=selected_companies,
         color_continuous_scale='RdBu_r',
-        title="Correlation Matrix",
+        title="Correlation matrix",
         zmin=-0.7,
         zmax=1.0,
         text_auto=".3f"  # Display values in each cell, 3 decimal places
@@ -141,7 +136,7 @@ def black_scholes_model(data):
     st.plotly_chart(fig, use_container_width=True)
     
     # Generate scenarios
-    st.subheader("Generate Scenario")
+    st.subheader("Generate scenario")
     
     # Scenario parameters
     col1, col2 = st.columns(2)
@@ -159,35 +154,122 @@ def black_scholes_model(data):
         return
     
     # Generate scenario
-    if st.button("Generate Scenario"):
-        with st.spinner("Generating scenario..."):
-            scenarios_BS, _ = market_model_BS.generate_logreturns(
-                begin_date.strftime('%Y-%m-%d'),
-                end_date.strftime('%Y-%m-%d'),
-                num_scenarios
+    calibratedParameters = st.checkbox("Use calibrated parameters", value=True)
+    if calibratedParameters:
+        if st.button("Generate scenario"):
+            with st.spinner("Generating scenario..."):
+                scenarios_BS, _ = market_model_BS.generate_logreturns(
+                    begin_date.strftime('%Y-%m-%d'),
+                    end_date.strftime('%Y-%m-%d'),
+                    num_scenarios
+                )
+                
+            # Plot cumulative returns
+            fig = go.Figure()
+            scenario = scenarios_BS[f'Scenario 1']
+            for columns in scenario.columns:
+                cumulative_returns = np.exp(np.cumsum(scenario[columns]))
+                fig.add_trace(go.Scatter(
+                    x=scenario.index,
+                    y=cumulative_returns,
+                    mode='lines',
+                    name=columns
+                ))
+            
+            fig.update_layout(
+                template='plotly_dark',
+                title=f"Cumulative Returns for the stocks",
+                xaxis_title="Date",
+                yaxis_title="Cumulative Return",
+                height=500
             )
             
-        # Plot cumulative returns
-        fig = go.Figure()
-        scenario = scenarios_BS[f'Scenario 1']
-        for columns in scenario.columns:
-            cumulative_returns = np.exp(np.cumsum(scenario[columns]))
-            fig.add_trace(go.Scatter(
-                x=scenario.index,
-                y=cumulative_returns,
-                mode='lines',
-                name=columns
-            ))
+            st.plotly_chart(fig, use_container_width=True)
+    else :
+        # Get params_df from the user 
+        tab1, tab2 = st.tabs(["Manually input parameters", "Upload parameters"])
         
-        fig.update_layout(
-            template='plotly_dark',
-            title=f"Cumulative Returns for the stocks",
-            xaxis_title="Date",
-            yaxis_title="Cumulative Return",
-            height=500
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
+        with tab1:
+            st.write("Annual returns and volatilities:")
+            # Crée un DataFrame avec les valeurs par défaut issues de params_df
+            default_params_df = params_df.copy()
+            param_input = st.data_editor(
+                default_params_df,
+                num_rows="fixed",
+                use_container_width=True,
+                key="manual_param_editor"
+            )
+
+            st.write("Correlation matrix:")
+            # Get default correlation matrix from calibration
+            existing_corr = market_model_BS.parameters['Correlation matrix']
+            default_corr_df = existing_corr.loc[selected_companies, selected_companies].copy()
+            # Round for readability
+            default_corr_df = default_corr_df.round(3)
+            corr_input = st.data_editor(
+                default_corr_df,
+                num_rows="fixed",
+                use_container_width=True,
+                key="manual_corr_editor"
+            )
+
+            if st.button("Submit parameters and generate scenario"):
+                try:
+                    # Convert user inputs
+                    params_df2 = pd.DataFrame(param_input, columns=["Annual Return", "Annual Volatility"])
+                    corr_df = pd.DataFrame(corr_input, index=selected_companies, columns=selected_companies)
+                    # Enforce symmetry and identity diagonal
+                    corr_df = (corr_df + corr_df.T) / 2
+                    np.fill_diagonal(corr_df.values, 1.0)
+
+                    # Validation simple (optionnelle)
+                    if not ((corr_df.values >= -1).all() and (corr_df.values <= 1).all()):
+                        st.warning("Some correlation values are out of bounds [-1, 1].")
+
+                    # Update model parameters
+                    Parameters_simu = {'Returns': params_df2["Annual Return"],
+                                        'Volatilities': params_df2["Annual Volatility"],
+                                        'Correlation matrix': corr_df}
+                    market_modelBS_simulation = MarketModel(model_name="BS", parameters=Parameters_simu)
+                    st.success("Parameters successfully submitted.")
+
+                    with st.spinner("Generating scenario..."):
+                        scenarios_BS, _ = market_modelBS_simulation.generate_logreturns(
+                            begin_date.strftime('%Y-%m-%d'),
+                            end_date.strftime('%Y-%m-%d'),
+                            num_scenarios
+                        )
+                        
+                    # Plot cumulative returns
+                    fig = go.Figure()
+                    scenario = scenarios_BS[f'Scenario 1']
+                    for columns in scenario.columns:
+                        cumulative_returns = np.exp(np.cumsum(scenario[columns]))
+                        fig.add_trace(go.Scatter(
+                            x=scenario.index,
+                            y=cumulative_returns,
+                            mode='lines',
+                            name=columns
+                        ))
+                    
+                    fig.update_layout(
+                        template='plotly_dark',
+                        title=f"Cumulative Returns for the stocks",
+                        xaxis_title="Date",
+                        yaxis_title="Cumulative Return",
+                        height=500
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+
+        with tab2:
+            params_df2 = st.file_uploader("Upload parameters DataFrame", type=["csv"])
+            # Message to inform the functionality is not implemented yet
+            st.warning("This functionality is not implemented yet. Please use the manual input tab for now.")
+
 
 def heston_model(data):
     """Heston model calibration and visualization"""
@@ -281,52 +363,159 @@ def heston_model(data):
         return
     
     # Generate scenario
-    if st.button("Generate Scenario"):
-        with st.spinner("Generating scenario..."):
-            scenarios_Heston, Var_scenarios = market_model_Heston.generate_logreturns(
-                begin_date.strftime('%Y-%m-%d'),
-                end_date.strftime('%Y-%m-%d'),
-                num_scenarios
+    calibratedParameters = st.checkbox("Use calibrated parameters", value=True)
+    if calibratedParameters:
+        if st.button("Generate Scenario"):
+            with st.spinner("Generating scenario..."):
+                scenarios_Heston, Var_scenarios = market_model_Heston.generate_logreturns(
+                    begin_date.strftime('%Y-%m-%d'),
+                    end_date.strftime('%Y-%m-%d'),
+                    num_scenarios
+                )
+            
+            # Plot cumulative returns
+            fig = go.Figure()
+            scenario = scenarios_Heston[f'Scenario 1']
+            for columns in scenario.columns:
+                cumulative_returns = np.exp(np.cumsum(scenario[columns]))
+                fig.add_trace(go.Scatter(
+                    x=scenario.index,
+                    y=cumulative_returns,
+                    mode='lines',
+                    name=columns
+                ))
+            fig.update_layout(
+                template='plotly_dark',
+                title=f"Cumulative Returns for the stocks",
+                xaxis_title="Date",
+                yaxis_title="Cumulative Return",
+                height=500
             )
-        
-        # Plot cumulative returns
-        fig = go.Figure()
-        scenario = scenarios_Heston[f'Scenario 1']
-        for columns in scenario.columns:
-            cumulative_returns = np.exp(np.cumsum(scenario[columns]))
-            fig.add_trace(go.Scatter(
-                x=scenario.index,
-                y=cumulative_returns,
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Plot variance scenarios
+            fig2 = go.Figure()
+            scenario_var = Var_scenarios[f'Scenario 1']
+            for columns in scenario_var.columns:
+                fig2.add_trace(go.Scatter(
+                x=scenario_var.index,
+                y=scenario_var[columns],
                 mode='lines',
                 name=columns
-            ))
-        fig.update_layout(
-            template='plotly_dark',
-            title=f"Cumulative Returns for the stocks",
-            xaxis_title="Date",
-            yaxis_title="Cumulative Return",
-            height=500
-        )
-        st.plotly_chart(fig, use_container_width=True)
+                ))
+            fig2.update_layout(
+                template='plotly_dark',
+                title=f"Variance for the stocks",
+                xaxis_title="Date",
+                yaxis_title="Variance",
+                height=500
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+    else:
+        # Get params_df from the user 
+        tab1, tab2 = st.tabs(["Manually input parameters", "Upload parameters"])
         
-        # Plot variance scenarios
-        fig2 = go.Figure()
-        scenario_var = Var_scenarios[f'Scenario 1']
-        for columns in scenario_var.columns:
-            fig2.add_trace(go.Scatter(
-            x=scenario_var.index,
-            y=scenario_var[columns],
-            mode='lines',
-            name=columns
-            ))
-        fig2.update_layout(
-            template='plotly_dark',
-            title=f"Variance for the stocks",
-            xaxis_title="Date",
-            yaxis_title="Variance",
-            height=500
-        )
-        st.plotly_chart(fig2, use_container_width=True)
+        with tab1:
+            st.write("Annual returns and volatilities:")
+            # Crée un DataFrame avec les valeurs par défaut issues de params_df
+            default_params_df = params_df.copy()
+            param_input = st.data_editor(
+                default_params_df,
+                num_rows="fixed",
+                use_container_width=True,
+                key="manual_param_editor"
+            )
+
+            st.write("Correlation matrix:")
+            # Get default correlation matrix from calibration
+            existing_corr = dB_dW_corr.copy()
+            default_corr_df = existing_corr.copy()
+            # Round for readability
+            default_corr_df = default_corr_df.round(3)
+            corr_input = st.data_editor(
+                default_corr_df,
+                num_rows="fixed",
+                use_container_width=True,
+                key="manual_corr_editor"
+            )
+
+            if st.button("Submit parameters and generate scenario"):
+                try:
+                    # Convert user inputs
+                    params_df2 = pd.DataFrame(param_input, columns=["Annual Return", "Volatility mean reversion speed (kappa)", "Long-term volatility (theta)", "Volatility of volatility (sigma)"])
+                    corr_df = pd.DataFrame(corr_input)
+                    # Enforce symmetry and identity diagonal
+                    corr_df = (corr_df + corr_df.T) / 2
+                    np.fill_diagonal(corr_df.values, 1.0)
+
+                    # Validation simple (optionnelle)
+                    if not ((corr_df.values >= -1).all() and (corr_df.values <= 1).all()):
+                        st.warning("Some correlation values are out of bounds [-1, 1].")
+
+                    # Update model parameters
+                    params_heston = market_model_Heston.parameters['Parameters Heston'].copy()
+                    corr_cal = market_model_Heston.parameters['dB_dW correlation'].copy()
+                    print(corr_cal)
+                    params_heston.loc['mu'] = params_df2["Annual Return"]
+                    params_heston.loc['kappa'] = params_df2["Volatility mean reversion speed (kappa)"]
+                    params_heston.loc['theta'] = params_df2["Long-term volatility (theta)"]
+                    params_heston.loc['sigma'] = params_df2["Volatility of volatility (sigma)"]
+                    print(corr_df)
+                    Parameters_simu = {'Parameters Heston': params_heston,
+                                        'dB_dW correlation': corr_df}
+                    market_modelHeston_simulation = MarketModel(model_name="Heston", parameters=Parameters_simu)
+                    st.success("Parameters successfully submitted.")
+
+                    with st.spinner("Generating scenario..."):
+                        scenarios_Heston, Var_scenarios = market_modelHeston_simulation.generate_logreturns(
+                            begin_date.strftime('%Y-%m-%d'),
+                            end_date.strftime('%Y-%m-%d'),
+                            num_scenarios
+                        )
+                    # Plot cumulative returns
+                    fig = go.Figure()
+                    scenario = scenarios_Heston[f'Scenario 1']
+                    for columns in scenario.columns:
+                        cumulative_returns = np.exp(np.cumsum(scenario[columns]))
+                        fig.add_trace(go.Scatter(
+                            x=scenario.index,
+                            y=cumulative_returns,
+                            mode='lines',
+                            name=columns
+                        ))
+                    fig.update_layout(
+                        template='plotly_dark',
+                        title=f"Cumulative Returns for the stocks",
+                        xaxis_title="Date",
+                        yaxis_title="Cumulative Return",
+                        height=500
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    # Plot variance scenarios
+                    fig2 = go.Figure()
+                    scenario_var = Var_scenarios[f'Scenario 1']
+                    for columns in scenario_var.columns:
+                        fig2.add_trace(go.Scatter(
+                        x=scenario_var.index,
+                        y=scenario_var[columns],
+                        mode='lines',
+                        name=columns
+                        ))
+                    fig2.update_layout(
+                        template='plotly_dark',
+                        title=f"Variance for the stocks",
+                        xaxis_title="Date",
+                        yaxis_title="Variance",
+                        height=500
+                    )
+                    st.plotly_chart(fig2, use_container_width=True)
+
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+                    
+                    
+
 
 
 
