@@ -17,7 +17,7 @@ def portfolio_simulation_page(data, data_esg, cac40_weights):
     
     # Select companies for portfolio
     companies = data.columns.tolist()
-    selected_companies = st.multiselect("Select Companies for Portfolio", companies, default=companies[:10])
+    selected_companies = st.multiselect("Select Companies for Portfolio", companies, default=companies[:5])
     
     if not selected_companies:
         st.warning("Please select at least one company.")
@@ -26,16 +26,10 @@ def portfolio_simulation_page(data, data_esg, cac40_weights):
     # Filter data
     filtered_data = data[selected_companies]
     
-    # Calibrate model
-    with st.spinner("Calibrating Black-Scholes model..."):
-        market_model_BS = MarketModel(model_name="BS")
-        market_model_BS.fit(filtered_data)
-    
     # Portfolio allocation
     st.subheader("Portfolio Allocation")
     
     allocation_type = st.radio("Allocation Type", ["Equal Weight", "CAC40 Weight", "Custom"], horizontal=True)
-    
     if allocation_type == "Equal Weight":
         # Equal weight allocation
         allocation = np.ones(len(selected_companies)) / len(selected_companies)
@@ -90,23 +84,117 @@ def portfolio_simulation_page(data, data_esg, cac40_weights):
     st.plotly_chart(fig, use_container_width=True)
     
     # Simulation parameters
+    st.subheader("Model")
+    # Select model
+    model_type = st.selectbox("Select Model", ["Black-Scholes", "Heston"])
+    model_type = "BS" if model_type == "Black-Scholes" else model_type
+    # Calibrate model
+    with st.spinner(f"Calibrating {model_type} model..."):
+        market_model_simu = MarketModel(model_name=model_type)
+        market_model_simu.fit(filtered_data)
+
+    if model_type == "BS":
+        params_df = pd.DataFrame({
+        'Annual Return': market_model_simu.parameters['Returns'],
+        'Annual Volatility': market_model_simu.parameters['Volatilities']
+        })
+        st.write("Annual returns and volatilities:")
+        # Crée un DataFrame avec les valeurs par défaut issues de params_df
+        default_params_df = params_df.copy()
+        param_input = st.data_editor(
+            default_params_df,
+            num_rows="fixed",
+            use_container_width=True,
+            key="manual_param_editor")
+        
+        params_df2 = pd.DataFrame(param_input, columns=["Annual Return", "Annual Volatility"])
+        default_corr_df = market_model_simu.parameters['Correlation matrix']
+        default_corr_df = default_corr_df.round(3)
+        corr_input = st.data_editor(
+            default_corr_df,
+            num_rows="fixed",
+            use_container_width=True,
+            key="manual_corr_editor"
+        )
+        corr_df = pd.DataFrame(corr_input, index=selected_companies, columns=selected_companies)
+        # Enforce symmetry and identity diagonal
+        corr_df = (corr_df + corr_df.T) / 2
+        np.fill_diagonal(corr_df.values, 1.0)
+
+        Parameters_simu = {'Returns': params_df2["Annual Return"],
+                            'Volatilities': params_df2["Annual Volatility"],
+                            'Correlation matrix': corr_df}
+        market_model_simu.set_parameters(Parameters_simu)
+        
+    elif model_type == "Heston":
+        df_heston_params, dB_dW_corr = market_model_simu.parameters['Parameters Heston'], market_model_simu.parameters['dB_dW correlation']
+        # Display model parameters
+        params_df = pd.DataFrame({
+            'Annual Return': df_heston_params.loc['mu'],
+            'Volatility mean reversion speed (kappa)': df_heston_params.loc['kappa'],
+            'Long-term volatility (theta)': df_heston_params.loc['theta'],
+            'Volatility of volatility (sigma)': df_heston_params.loc['sigma'],
+        })
+        default_params_df = params_df.copy()
+        param_input = st.data_editor(
+            default_params_df,
+            num_rows="fixed",
+            use_container_width=True,
+            key="manual_param_editor"
+        )
+        default_corr_df = dB_dW_corr.copy()
+        # Round for readability
+        default_corr_df = default_corr_df.round(3)
+        corr_input = st.data_editor(
+            default_corr_df,
+            num_rows="fixed",
+            use_container_width=True,
+            key="manual_corr_editor"
+        )
+        # Convert user inputs
+        params_df2 = pd.DataFrame(param_input, columns=["Annual Return", "Volatility mean reversion speed (kappa)", "Long-term volatility (theta)", "Volatility of volatility (sigma)"])
+        corr_df = pd.DataFrame(corr_input)
+        # Enforce symmetry and identity diagonal
+        corr_df = (corr_df + corr_df.T) / 2
+        np.fill_diagonal(corr_df.values, 1.0)
+        # Validation simple (optionnelle)
+        if not ((corr_df.values >= -1).all() and (corr_df.values <= 1).all()):
+            st.warning("Some correlation values are out of bounds [-1, 1].")
+
+        # Update model parameters
+        params_heston = df_heston_params.copy()
+        corr_cal = dB_dW_corr.copy()
+        params_heston.loc['mu'] = params_df2["Annual Return"]
+        params_heston.loc['kappa'] = params_df2["Volatility mean reversion speed (kappa)"]
+        params_heston.loc['theta'] = params_df2["Long-term volatility (theta)"]
+        params_heston.loc['sigma'] = params_df2["Volatility of volatility (sigma)"]
+        Parameters_simu = {'Parameters Heston': params_heston,
+                            'dB_dW correlation': corr_df}
+        market_model_simu.set_parameters(Parameters_simu)
+    # Simulation parameters
     st.subheader("Simulation Parameters")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
         begin_date = st.date_input("Begin Date", value=datetime.now().date())
+        alpha_var = st.slider("Alpha for VaR", min_value=0.950, max_value=0.995, value=0.99, step=0.005, format="%.3f")
+        alpha_ES = st.slider("Alpha for ES", min_value=0.950, max_value=0.995, value=0.975, step=0.005, format="%.3f")
     
     with col2:
         end_date = st.date_input("End Date", value=(datetime.now() + timedelta(days=365)).date())
+        nbinsx = st.slider("Number of bins for histogram", min_value=1, max_value=100, value=30, step=1)
     
     with col3:
         num_scenarios = st.number_input("Number of Scenarios", min_value=1, max_value=1000, value=50)
+        T_recompute = st.slider("Recomputing period", min_value=20, max_value=300, value=300, step=1)
+        st.write("Note: The recomputing period is the period in days for recomputing the allocation target. If it equals 300, the allocation target won't be recomputed.")
+        T_recompute = 0 if T_recompute == 300 else T_recompute
     
     if begin_date >= end_date:
         st.warning("Begin date must be before end date.")
         return
-    
+
     # Strategy selection
     strategy = st.radio("Investment Strategy", ["Buy and hold", "Rebalancing"], horizontal=True)
     
@@ -136,17 +224,17 @@ def portfolio_simulation_page(data, data_esg, cac40_weights):
             # Create simulation
             simulation = Simulation(
                 nb_scenarios=int(num_scenarios),
-                model=market_model_BS,
+                model=market_model_simu,
                 strategy=strategy,
                 parameters=parameters
             )
             
             # Generate scenarios and evolutions
             simulation.generate_scenarios()
-            simulation.generate_evolutions()
+            simulation.generate_evolutions(T_allocation = T_recompute)
             
             # Compute risk metrics
-            simulation.compute_metrics()
+            simulation.compute_metrics(alpha_var=alpha_var, alpha_ES=alpha_ES)
         
         # Display results
         st.subheader("Simulation Results")
@@ -214,14 +302,13 @@ def portfolio_simulation_page(data, data_esg, cac40_weights):
         ))
         
         # Calculate and plot VaR
-        alpha = 0.95
-        var_evolution = pd.DataFrame({name: data.sum(axis=1) for name, data in simulation.evolutions.items()}).quantile(1-alpha, axis=1)
+        var_evolution = pd.DataFrame({name: data.sum(axis=1) for name, data in simulation.evolutions.items()}).quantile(1-alpha_var, axis=1)
         
         fig.add_trace(go.Scatter(
             x=var_evolution.index,
             y=var_evolution,
             mode='lines',
-            name=f'VaR ({alpha*100}%)',
+            name=f'VaR ({alpha_var*100}%)',
             line=dict(color='black', width=2, dash='dash')
         ))
         
@@ -250,7 +337,7 @@ def portfolio_simulation_page(data, data_esg, cac40_weights):
             x=terminal_values,
             name='Terminal Values',
             opacity=0.7,
-            nbinsx=30
+            nbinsx=nbinsx
         ))
         
         # Add mean line
@@ -273,10 +360,10 @@ def portfolio_simulation_page(data, data_esg, cac40_weights):
         
         # Add VaR line
         fig.add_vline(
-            x=np.percentile(terminal_values, 100 * (1-alpha)),
+            x=np.percentile(terminal_values, 100 * (1-alpha_var)),
             line_dash="dash",
             line_color="black",
-            annotation_text=f"VaR ({alpha*100}%): {np.percentile(terminal_values, 100 * (1-alpha)):.4f}",
+            annotation_text=f"VaR ({alpha_var*100}%): {np.percentile(terminal_values, 100 * (1-alpha_var)):.4f}",
             annotation_position="bottom right"
         )
         

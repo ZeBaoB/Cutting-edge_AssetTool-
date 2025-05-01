@@ -270,7 +270,6 @@ def black_scholes_model(data):
             # Message to inform the functionality is not implemented yet
             st.warning("This functionality is not implemented yet. Please use the manual input tab for now.")
 
-
 def heston_model(data):
     """Heston model calibration and visualization"""
     st.subheader("Presentation Heston Model")
@@ -425,7 +424,7 @@ def heston_model(data):
                 use_container_width=True,
                 key="manual_param_editor"
             )
-
+            
             st.write("Correlation matrix:")
             # Get default correlation matrix from calibration
             existing_corr = dB_dW_corr.copy()

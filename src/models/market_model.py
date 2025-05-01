@@ -14,6 +14,17 @@ class MarketModel(ABC):
         self.model_name = model_name
         self.parameters = parameters
     
+    def set_parameters(self, parameters):
+        """
+        Set the parameters for the model
+        
+        Parameters
+        ----------
+        parameters : dict
+            Dictionary of parameters for the model
+        """
+        self.parameters = parameters
+    
     @abstractmethod
     def fit(self, data):
         """

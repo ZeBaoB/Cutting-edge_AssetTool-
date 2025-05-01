@@ -120,14 +120,10 @@ class SimulationImpl(Simulation):
         dict
             Dictionary of scenarios
         """
-        self.scenarios = self.model.generate_logreturns(
-            self.parameters["Begin date"], 
-            self.parameters["End date"], 
-            self.nb_scenarios
-        )
-        return self.scenarios
+        
+        self.scenarios, self.scenarios_var = self.model.generate_logreturns(self.parameters["Begin date"], self.parameters["End date"], self.nb_scenarios)
 
-    def generate_evolutions(self):
+    def generate_evolutions(self, T_allocation=0):
         """
         Generate the evolution of the portfolio value for each scenario
         
@@ -137,28 +133,45 @@ class SimulationImpl(Simulation):
             Dictionary of portfolio value evolutions
         """
         # Get rebalancing period (default to -1 for Buy and Hold)
-        t_rebalancing = self.parameters.get("Rebalancing period", -1) if self.strategy == "Rebalancing" else -1
+        nb_periods = self.scenarios["Scenario 1"].shape[1]
+        nb_stocks = self.scenarios["Scenario 1"].shape[0]
+        T_rebalancement = self.parameters["Rebalancing period"] if self.strategy == "Rebalancing" else -1
         allocation = self.parameters["Allocation"]
-        
-        # Generate evolution for each scenario
-        self.evolutions = {
-            f'Evolution {i+1}': generate_evolution(
-                self.scenarios[f"Scenario {i+1}"],
-                allocation, 
-                t_rebalancing
-            ) for i in range(self.nb_scenarios)
-        }
-        
-        return self.evolutions
+        print("Generate evol")
+        if T_allocation <= 0:
+            self.evolutions = {f'Evolution {i+1}' : generate_evolution(self.scenarios[f"Scenario {i+1}"], allocation, T_rebalancement) for i in range(self.nb_scenarios)}
+        else:
+            self.evolutions = {}
+            for i in range(self.nb_scenarios):
+                porfolio_value = 1.0
+                scenario = self.scenarios[f"Scenario {i+1}"]
+                evolution = []
+                current_allocation = allocation.copy()
+                intervals = range(0, scenario.shape[0], T_allocation)
+                for start in intervals:
+                    end = min(start + T_allocation, scenario.shape[0])
+                    # Recompute allocation at the start of the intervals, BS model approach
+                    if start != 0:
+                        model_used = MarketModel(model_name="BS")
+                        model_used.fit(np.exp(scenario.iloc[start-T_allocation:end-T_allocation, :].cumsum(axis=0)))
+                        self.set_model_allocation(model_used)
+                        self.compute_allocation()
+                        current_allocation = self.parameters["Allocation"]
+                    # Generate evolution for the interval
+                    new_evol, porfolio_value = generate_evolution(scenario.iloc[start:end, :], current_allocation, T_rebalancement = T_rebalancement, initial_portfolio_value = porfolio_value, get_portfolio_value = True)
+                    evolution.append(new_evol)
+                self.evolutions[f'Evolution {i+1}'] = pd.concat(evolution, axis=0)
 
-    def compute_metrics(self, alpha=0.95):
+    def compute_metrics(self, alpha_var=0.99, alpha_ES=0.975):
         """
         Compute the risk metrics of the simulation
         
         Parameters
         ----------
-        alpha : float, optional
-            Confidence level for VaR and ES, by default 0.95
+        alpha_var : float, optional
+            Confidence level for VaR, by default 0.95
+        alpha_ES : float, optional
+            Confidence level for ES, by default 0.95
             
         Returns
         -------
@@ -176,15 +189,15 @@ class SimulationImpl(Simulation):
         risk_metrics["Mean terminal value"] = round(float(np.mean(terminal_values)), 4)
         risk_metrics["Median terminal value"] = round(float(np.median(terminal_values)), 4)
         risk_metrics["Volatility of terminal value"] = round(float(np.std(terminal_values)), 4)
-        risk_metrics[f"VaR({alpha*100}%)"] = round(float(np.quantile(terminal_values, 1-alpha)), 4)
+        risk_metrics[f"VaR({alpha_var*100}%)"] = round(float(np.quantile(terminal_values, 1-alpha_var)), 4)
         
         # Calculate Expected Shortfall (ES)
-        var_threshold = risk_metrics[f"VaR({alpha*100}%)"]
+        var_threshold = float(np.quantile(terminal_values, 1-alpha_ES))
         below_var_values = [value for value in terminal_values if value < var_threshold]
         if below_var_values:
-            risk_metrics[f"ES({alpha*100}%)"] = round(float(np.mean(below_var_values)), 4)
+            risk_metrics[f"ES({alpha_ES*100}%)"] = round(float(np.mean(below_var_values)), 4)
         else:
-            risk_metrics[f"ES({alpha*100}%)"] = risk_metrics[f"VaR({alpha*100}%)"]
+            risk_metrics[f"ES({alpha_ES*100}%)"] = var_threshold
 
         self.metrics = risk_metrics
         return risk_metrics
