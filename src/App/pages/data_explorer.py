@@ -199,7 +199,9 @@ def data_explorer_page(data, data_10y_dic, data_1min_dic):
             corr_matrix,
             color_continuous_scale='RdBu_r',
             title="Returns Correlation Matrix",
-            text_auto=".3f"  # Display values in each cell, 3 decimal places
+            text_auto=".3f",  # Display values in each cell, 3 decimal places
+            zmin=-0.7,
+            zmax=1.0
         )
         fig.update_traces(textfont_size=20)  # Update font size for text in cells
         
