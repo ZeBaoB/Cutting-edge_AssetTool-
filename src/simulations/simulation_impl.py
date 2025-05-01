@@ -137,7 +137,6 @@ class SimulationImpl(Simulation):
         nb_stocks = self.scenarios["Scenario 1"].shape[0]
         T_rebalancement = self.parameters["Rebalancing period"] if self.strategy == "Rebalancing" else -1
         allocation = self.parameters["Allocation"]
-        print("Generate evol")
         if T_allocation <= 0:
             self.evolutions = {f'Evolution {i+1}' : generate_evolution(self.scenarios[f"Scenario {i+1}"], allocation, T_rebalancement) for i in range(self.nb_scenarios)}
         else:
