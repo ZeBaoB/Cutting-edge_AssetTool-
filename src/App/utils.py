@@ -8,7 +8,7 @@ import plotly.express as px
 from src.models.market_model import MarketModel
 from src.utils.financial_utils import calibrate_merton_model, calibrate_heston_model
 
-@st.cache_data
+
 def load_data():
     """Load historical price data and ESG data"""
     # Create dictionary to store dataFrames for the CAC40 companies
@@ -73,7 +73,7 @@ def load_data():
     
     return histo_CAC40_10y.dropna(), data_10y_dic, data_1min_dic, data_esg, cac40_weights
 
-def black_scholes_model(/data):
+def black_scholes_model(data):
     """Black-Scholes model calibration and visualization"""
     st.subheader("Presentation Black-Scholes Model")
     # Display the dynamic in the model
@@ -513,12 +513,6 @@ def heston_model(data):
 
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
-                    
-                    
-
-
-
-
 
 def merton_model(data):
     """Merton jump-diffusion model calibration and visualization"""

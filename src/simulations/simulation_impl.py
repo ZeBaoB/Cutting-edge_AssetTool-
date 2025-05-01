@@ -143,7 +143,7 @@ class SimulationImpl(Simulation):
         # Generate evolution for each scenario
         self.evolutions = {
             f'Evolution {i+1}': generate_evolution(
-                self.scenarios[f"Scenario {i+1}"], 
+                self.scenarios[f"Scenario {i+1}"],
                 allocation, 
                 t_rebalancing
             ) for i in range(self.nb_scenarios)
