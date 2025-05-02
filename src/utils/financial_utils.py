@@ -86,7 +86,7 @@ def generate_BS_scenarios(parameters, begin_date, end_date, number_of_scenarios)
     log_returns = log_returns * (volatilities.values[:, None] * adjustment_factor[:, None, None])
     
     # Add the annual average return
-    mean_returns = (returns.values[:, None] / 256.2305133079848) * delta_t[:, None, None]
+    mean_returns = (returns.values[:, None] - volatilities.values[:, None]**2 / 2 ) / 365.25 * delta_t[:, None, None]
     log_returns += mean_returns
     
     # Create dictionary of scenarios

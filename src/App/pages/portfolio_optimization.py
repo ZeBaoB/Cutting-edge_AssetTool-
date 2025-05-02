@@ -11,13 +11,13 @@ matplotlib.use('Agg')  # Use non-interactive backend
 from src.models.market_model import MarketModel
 from src.simulations.simulation import Simulation
 
-def esg_optimization_page(data, data_esg, cac40_weights):
-    """ESG Portfolio Optimization page for optimizing portfolios with ESG constraints"""
-    st.title("ESG Portfolio Optimization")
+def optimization_page(data, data_esg, cac40_weights):
+    """Portfolio Optimization page for optimizing portfolios with ESG constraints"""
+    st.title("Portfolio Optimization")
     
     # Select companies for portfolio
     companies = data.columns.tolist()
-    selected_companies = st.multiselect("Select Companies for Portfolio", companies, default=companies[:20])
+    selected_companies = st.multiselect("Select Companies for Portfolio", companies, default=companies[:5])
     
     if not selected_companies:
         st.warning("Please select at least one company.")

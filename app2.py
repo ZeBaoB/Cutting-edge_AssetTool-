@@ -12,7 +12,7 @@ from src.App.pages import (
     data_explorer_page,
     market_model_page,
     portfolio_simulation_page,
-    esg_optimization_page,
+    optimization_page
 )
 
 # Set page configuration
@@ -79,7 +79,7 @@ def main():
     # Navigation
     page = st.sidebar.selectbox(
         "Select Page",
-        ["Home", "Data Explorer", "Market Model", "Portfolio Simulation", "ESG Portfolio Optimization"]
+        ["Home", "Data Explorer", "Market Model", "Portfolio Simulation", "Portfolio Optimization"]
     )
     
     # Display selected page
@@ -91,8 +91,8 @@ def main():
         market_model_page(data)
     elif page == "Portfolio Simulation":
         portfolio_simulation_page(data, data_esg, cac40_weights)
-    elif page == "ESG Portfolio Optimization":
-        esg_optimization_page(data, data_esg, cac40_weights)
+    elif page == "Portfolio Optimization":
+        optimization_page(data, data_esg, cac40_weights)
 
 # Run the app
 if __name__ == "__main__":
