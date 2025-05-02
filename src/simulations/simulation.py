@@ -187,7 +187,7 @@ class Simulation(ABC):
         pass
     
     @abstractmethod
-    def generate_evolutions(self):
+    def generate_evolutions(self, T_allocation: int = 0):
         """
         Generate the evolution of the portfolio value for each scenario
         
@@ -199,7 +199,7 @@ class Simulation(ABC):
         pass
 
     @abstractmethod
-    def compute_metrics(self, alpha=0.95):
+    def compute_metrics(self, alpha_var: float = 0.99, alpha_ES: float = 0.975):
         """
         Compute the risk metrics of the simulation
         

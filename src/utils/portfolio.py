@@ -1,19 +1,19 @@
 import numpy as np
 import pandas as pd
 
-def generate_evolution(log_returns, allocation, t_rebalancing=-1):
+def generate_evolution(logReturns, allocation, T_rebalancing=-1, initial_portfolio_value = 1.0, get_portfolio_value = False):
     """
     Generate the evolution of a portfolio value based on log returns and allocation.
     
     Parameters
     ----------
-    log_returns : pd.DataFrame
+    logReturns : pd.DataFrame
         DataFrame of log returns
         index : dates
         columns : stock names
     allocation : array-like
         Initial portfolio weights
-    t_rebalancing : int, optional
+    T_rebalancing : int, optional
         Rebalancing period in days, by default -1 (Buy and Hold)
         
     Returns
@@ -23,29 +23,25 @@ def generate_evolution(log_returns, allocation, t_rebalancing=-1):
         index : dates
         columns : stock names
     """
-    nb_periods = log_returns.shape[0]
-    nb_stocks = log_returns.shape[1]
-    
-    # Initialize evolution DataFrame with zeros
-    evolution = log_returns * 0.0
-    
-    if t_rebalancing == -1:
+    nb_periods = logReturns.shape[0]
+    nb_stocks = logReturns.shape[1]
+    evolution = logReturns * 0.0
+    if T_rebalancing == -1:
         # Buy and hold strategy
-        evolution = np.exp(np.cumsum(log_returns)) * allocation
+        evolution = np.exp(np.cumsum(logReturns)) * initial_portfolio_value * allocation
     else:
         # Rebalancing strategy
-        evolution.iloc[:t_rebalancing, :] = np.exp(np.cumsum(log_returns.iloc[:t_rebalancing, :])) * allocation
+        evolution.iloc[:T_rebalancing, :] = np.exp(np.cumsum(logReturns.iloc[:T_rebalancing, :]))* initial_portfolio_value * allocation
         
-        for i in range(t_rebalancing, nb_periods, t_rebalancing):
-            end_idx = min(i + t_rebalancing, nb_periods)
-            evolution.iloc[i:end_idx, :] = np.exp(np.cumsum(log_returns.iloc[i:end_idx, :])) * evolution.iloc[i-1, :].sum() * allocation
-            
-        # Handle the last period if it's not a complete rebalancing period
-        last_period = (nb_periods // t_rebalancing) * t_rebalancing
-        if last_period < nb_periods:
-            evolution.iloc[last_period:, :] = np.exp(np.cumsum(log_returns.iloc[last_period:, :])) * evolution.iloc[last_period-1, :].sum() * allocation
-    
-    return evolution
+        for i in range(T_rebalancing, nb_periods, T_rebalancing):
+            evolution.iloc[i:i+T_rebalancing, :] = np.exp(np.cumsum(logReturns.iloc[i:i+T_rebalancing, :])) * evolution.iloc[i-1, :].sum() * allocation
+        last_period = (nb_periods//T_rebalancing)*T_rebalancing
+        evolution.iloc[last_period:, :] = np.exp(np.cumsum(logReturns.iloc[last_period:, :])) * evolution.iloc[last_period-1, :].sum() * allocation
+    portfolio_value = evolution.iloc[-1,:].sum()
+    if get_portfolio_value :
+        return evolution, portfolio_value
+    else :
+        return evolution
 
 def calculate_portfolio_metrics(returns, weights, cov_matrix, rf=0.02):
     """

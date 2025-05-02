@@ -123,7 +123,7 @@ class SimulationImpl(Simulation):
         
         self.scenarios, self.scenarios_var = self.model.generate_logreturns(self.parameters["Begin date"], self.parameters["End date"], self.nb_scenarios)
 
-    def generate_evolutions(self, T_allocation=0):
+    def generate_evolutions(self, T_allocation: int = 0):
         """
         Generate the evolution of the portfolio value for each scenario
         
@@ -135,10 +135,10 @@ class SimulationImpl(Simulation):
         # Get rebalancing period (default to -1 for Buy and Hold)
         nb_periods = self.scenarios["Scenario 1"].shape[1]
         nb_stocks = self.scenarios["Scenario 1"].shape[0]
-        T_rebalancement = self.parameters["Rebalancing period"] if self.strategy == "Rebalancing" else -1
+        T_rebalancing = self.parameters["Rebalancing period"] if self.strategy == "Rebalancing" else -1
         allocation = self.parameters["Allocation"]
         if T_allocation <= 0:
-            self.evolutions = {f'Evolution {i+1}' : generate_evolution(self.scenarios[f"Scenario {i+1}"], allocation, T_rebalancement) for i in range(self.nb_scenarios)}
+            self.evolutions = {f'Evolution {i+1}' : generate_evolution(self.scenarios[f"Scenario {i+1}"], allocation, T_rebalancing) for i in range(self.nb_scenarios)}
         else:
             self.evolutions = {}
             for i in range(self.nb_scenarios):
@@ -153,15 +153,15 @@ class SimulationImpl(Simulation):
                     if start != 0:
                         model_used = MarketModel(model_name="BS")
                         model_used.fit(np.exp(scenario.iloc[start-T_allocation:end-T_allocation, :].cumsum(axis=0)))
-                        self.set_model_allocation(model_used)
+                        self.set_model(model_used)
                         self.compute_allocation()
                         current_allocation = self.parameters["Allocation"]
                     # Generate evolution for the interval
-                    new_evol, porfolio_value = generate_evolution(scenario.iloc[start:end, :], current_allocation, T_rebalancement = T_rebalancement, initial_portfolio_value = porfolio_value, get_portfolio_value = True)
+                    new_evol, porfolio_value = generate_evolution(scenario.iloc[start:end, :], current_allocation, T_rebalancing = T_rebalancing, initial_portfolio_value = porfolio_value, get_portfolio_value = True)
                     evolution.append(new_evol)
                 self.evolutions[f'Evolution {i+1}'] = pd.concat(evolution, axis=0)
 
-    def compute_metrics(self, alpha_var=0.99, alpha_ES=0.975):
+    def compute_metrics(self, alpha_var: float = 0.99, alpha_ES: float = 0.975):
         """
         Compute the risk metrics of the simulation
         

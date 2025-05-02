@@ -42,9 +42,6 @@ def home_page():
         'Carbon Intensity': data_esg['Carbon intensity (Tons of CO2)']
     })
     
-    # Sort by weight
-    company_info = company_info.sort_values('Weight in CAC40', ascending=False)
-    
     # Display as a table
     st.dataframe(company_info.style.background_gradient(cmap='viridis', subset=['Weight in CAC40'])
                                   .background_gradient(cmap='RdYlGn_r', subset=['Sustainability Risk', 'Carbon Risk', 'Carbon Intensity']))

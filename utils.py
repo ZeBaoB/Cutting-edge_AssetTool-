@@ -4,26 +4,24 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
 
-def generate_evolution(logReturn, allocation, T_rebalancement=-1, initial_portfolio_value = 1.0, get_portfolio_value = False):
+def generate_evolution(logReturn, allocation, T_rebalancing=-1, initial_portfolio_value = 1.0, get_portfolio_value = False):
     """
     initially, sum(allocation) can be different of 1
     """
     
     nb_periods = logReturn.shape[0]
     nb_stocks = logReturn.shape[1]
-
     evolution = logReturn * 0.0
-    
-    if T_rebalancement == -1:
+    if T_rebalancing == -1:
         # Buy and hold strategy
         evolution = np.exp(np.cumsum(logReturn)) * initial_portfolio_value * allocation
     else:
         # Rebalancing strategy
-        evolution.iloc[:T_rebalancement, :] = np.exp(np.cumsum(logReturn.iloc[:T_rebalancement, :]))* initial_portfolio_value * allocation
+        evolution.iloc[:T_rebalancing, :] = np.exp(np.cumsum(logReturn.iloc[:T_rebalancing, :]))* initial_portfolio_value * allocation
         
-        for i in range(T_rebalancement, nb_periods, T_rebalancement):
-            evolution.iloc[i:i+T_rebalancement, :] = np.exp(np.cumsum(logReturn.iloc[i:i+T_rebalancement, :])) * evolution.iloc[i-1, :].sum() * allocation
-        last_period = (nb_periods//T_rebalancement)*T_rebalancement
+        for i in range(T_rebalancing, nb_periods, T_rebalancing):
+            evolution.iloc[i:i+T_rebalancing, :] = np.exp(np.cumsum(logReturn.iloc[i:i+T_rebalancing, :])) * evolution.iloc[i-1, :].sum() * allocation
+        last_period = (nb_periods//T_rebalancing)*T_rebalancing
         evolution.iloc[last_period:, :] = np.exp(np.cumsum(logReturn.iloc[last_period:, :])) * evolution.iloc[last_period-1, :].sum() * allocation
         
     portfolio_value = evolution.iloc[-1,:].sum()

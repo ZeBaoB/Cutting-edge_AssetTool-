@@ -10,9 +10,10 @@ from src.App.utils import load_data
 from src.App.pages import (
     home_page,
     data_explorer_page,
+    simulation_with_historical_data_page,
     market_model_page,
-    portfolio_simulation_page,
-    optimization_page
+    simulations_page,
+    portfolio_optimization_page,
 )
 
 # Set page configuration
@@ -72,27 +73,27 @@ def main():
     # Load data
     with st.spinner("Loading data..."):
         data, data_10y_dic, data_1min_dic, data_esg, cac40_weights = load_data()
-    
     # Sidebar
     st.sidebar.title("Asset management. Analysis and optimization")
-    
     # Navigation
     page = st.sidebar.selectbox(
         "Select Page",
-        ["Home", "Data Explorer", "Market Model", "Portfolio Simulation", "Portfolio Optimization"]
+        ["Home", "Data explorer", "Simulations with historical data", "Market model", "Portfolio simulation", "Portfolio optimization"]
     )
     
     # Display selected page
     if page == "Home":
         home_page()
-    elif page == "Data Explorer":
+    elif page == "Data explorer":
         data_explorer_page(data, data_10y_dic, data_1min_dic)
-    elif page == "Market Model":
+    elif page == "Market model":
         market_model_page(data)
-    elif page == "Portfolio Simulation":
-        portfolio_simulation_page(data, data_esg, cac40_weights)
-    elif page == "Portfolio Optimization":
-        optimization_page(data, data_esg, cac40_weights)
+    elif page == "Simulations with historical data":
+        simulation_with_historical_data_page(data, cac40_weights)
+    elif page == "Portfolio simulation":
+        simulations_page(data, cac40_weights)
+    elif page == "Portfolio optimization":
+        portfolio_optimization_page(data, data_esg)
 
 # Run the app
 if __name__ == "__main__":

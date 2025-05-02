@@ -11,7 +11,7 @@ matplotlib.use('Agg')  # Use non-interactive backend
 from src.models.market_model import MarketModel
 from src.simulations.simulation import Simulation
 
-def portfolio_simulation_page(data, data_esg, cac40_weights):
+def simulations_page(data, cac40_weights):
     """Portfolio Simulation page for creating and comparing portfolio simulations"""
     st.title("Portfolio Simulation")
     
@@ -171,6 +171,7 @@ def portfolio_simulation_page(data, data_esg, cac40_weights):
         Parameters_simu = {'Parameters Heston': params_heston,
                             'dB_dW correlation': corr_df}
         market_model_simu.set_parameters(Parameters_simu)
+    
     # Simulation parameters
     st.subheader("Simulation Parameters")
     
@@ -211,33 +212,19 @@ def portfolio_simulation_page(data, data_esg, cac40_weights):
             st.warning("Please select two different strategies.")
             return
         # Create simulation parameters for strategy 1
-        if strategy1 == "Buy and hold":
-            parameters1 = {
-                "Begin date": begin_date.strftime('%Y-%m-%d'),
-                "End date": end_date.strftime('%Y-%m-%d'),
-                "Allocation": allocation
-            }
-        else:
-            parameters1 = {
-                "Begin date": begin_date.strftime('%Y-%m-%d'),
-                "End date": end_date.strftime('%Y-%m-%d'),
-                "Allocation": allocation,
-                "Rebalancing period": rebalancing_period1
-            }
+        parameters1 = {
+            "Begin date": begin_date.strftime('%Y-%m-%d'),
+            "End date": end_date.strftime('%Y-%m-%d'),
+            "Allocation": allocation,
+            "Rebalancing period": rebalancing_period1
+        }
         # Create simulation parameters for strategy 2
-        if strategy2 == "Buy and hold":
-            parameters2 = {
-                "Begin date": begin_date.strftime('%Y-%m-%d'),
-                "End date": end_date.strftime('%Y-%m-%d'),
-                "Allocation": allocation
-            }
-        else:
-            parameters2 = {
-                "Begin date": begin_date.strftime('%Y-%m-%d'),
-                "End date": end_date.strftime('%Y-%m-%d'),
-                "Allocation": allocation,
-                "Rebalancing period": rebalancing_period2
-            }
+        parameters2 = {
+            "Begin date": begin_date.strftime('%Y-%m-%d'),
+            "End date": end_date.strftime('%Y-%m-%d'),
+            "Allocation": allocation,
+            "Rebalancing period": rebalancing_period2
+        }
         # Run simulation
         if st.button("Run Simulation"):
             with st.spinner("Running simulation..."):
@@ -518,19 +505,12 @@ def portfolio_simulation_page(data, data_esg, cac40_weights):
         rebalancing_period = st.slider("Rebalancing Period (days)", min_value=1, max_value=90, value=20) if strategy == "Rebalancing" else -1
         
         # Create simulation parameters
-        if strategy == "Buy and hold":
-            parameters = {
-                "Begin date": begin_date.strftime('%Y-%m-%d'),
-                "End date": end_date.strftime('%Y-%m-%d'),
-                "Allocation": allocation
-            }
-        else:
-            parameters = {
-                "Begin date": begin_date.strftime('%Y-%m-%d'),
-                "End date": end_date.strftime('%Y-%m-%d'),
-                "Allocation": allocation,
-                "Rebalancing period": rebalancing_period
-            }
+        parameters = {
+            "Begin date": begin_date.strftime('%Y-%m-%d'),
+            "End date": end_date.strftime('%Y-%m-%d'),
+            "Allocation": allocation,
+            "Rebalancing period": rebalancing_period
+        }
         
         # Run simulation
         if st.button("Run Simulation"):
