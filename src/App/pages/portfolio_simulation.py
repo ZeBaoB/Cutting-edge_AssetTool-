@@ -11,14 +11,18 @@ matplotlib.use('Agg')  # Use non-interactive backend
 from src.models.market_model import MarketModel
 from src.simulations.simulation import Simulation
 
-def simulations_page(data, cac40_weights):
+def simulations_page(data, data_esg, cac40_weights):
     """Portfolio Simulation page for creating and comparing portfolio simulations"""
     st.title("Portfolio Simulation")
     
     # Select companies for portfolio
     companies = data.columns.tolist()
     selected_companies = st.multiselect("Select Companies for Portfolio", companies, default=companies[:5])
-    
+    filtered_esg = data_esg.loc[selected_companies]
+    constraints_empty = {
+        "List": [],
+        "Value": []
+    }
     if not selected_companies:
         st.warning("Please select at least one company.")
         return
@@ -236,6 +240,8 @@ def simulations_page(data, cac40_weights):
                     parameters=parameters1
                 )
                 # Generate scenarios and evolutions for strategy 1
+                simulation1.set_dataESG(filtered_esg)
+                simulation1.set_constraints(constraints_empty)
                 simulation1.generate_scenarios()
                 simulation1.generate_evolutions(T_allocation = T_recompute)
                 # Compute risk metrics for strategy 1
@@ -249,6 +255,8 @@ def simulations_page(data, cac40_weights):
                     parameters=parameters2
                 )
                 # Generate scenarios and evolutions for strategy 2
+                simulation2.set_dataESG(filtered_esg)
+                simulation2.set_constraints(constraints_empty)
                 simulation2.set_scenarios(simulation1.scenarios)  # Use the same scenarios as strategy 1
                 simulation2.generate_evolutions(T_allocation = T_recompute)
                 # Compute risk metrics for strategy 2
@@ -522,7 +530,8 @@ def simulations_page(data, cac40_weights):
                     strategy=strategy,
                     parameters=parameters
                 )
-                
+                simulation.set_dataESG(filtered_esg)
+                simulation.set_constraints(constraints_empty)
                 # Generate scenarios and evolutions
                 simulation.generate_scenarios()
                 simulation.generate_evolutions(T_allocation = T_recompute)

@@ -91,7 +91,7 @@ def main():
     elif page == "Simulations with historical data":
         simulation_with_historical_data_page(data, cac40_weights)
     elif page == "Portfolio simulation":
-        simulations_page(data, cac40_weights)
+        simulations_page(data, data_esg, cac40_weights)
     elif page == "Portfolio optimization":
         portfolio_optimization_page(data, data_esg)
 
