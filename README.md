@@ -1,4 +1,4 @@
-Project in process
-
-Run App2, the lastest version
+Run App
 You need the folders Data and src
+
+python -m streamlit run app.py
