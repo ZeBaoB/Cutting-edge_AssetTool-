@@ -58,11 +58,13 @@ Orchestrates the simulation and evaluation of strategies.
 
 ## How to Use
 
-1. **Clone the repository**
+1. **Clone the repository - You need the folders Data and src**
 
 2. **Prepare your environment**
    - Install dependencies (suggested: use a virtualenv or conda environment)
-
-3. **Launch Streamlit**
    ```bash
-   streamlit run app.py
+   pip install -r requirements.txt
+
+4. **Launch Streamlit**
+   ```bash
+   python -m streamlit run app.py
