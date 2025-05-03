@@ -68,3 +68,22 @@ Orchestrates the simulation and evaluation of strategies.
 4. **Launch Streamlit**
    ```bash
    python -m streamlit run app.py
+
+## Data
+
+> 📈 **Historical Data**:  
+> The project uses historical CAC40 stock prices to simulate portfolio dynamics. These data files are stored in the `Data/` folder and used during model calibration and backtesting.
+
+> 🛠️ **Adaptability**:  
+> You can replace or extend the dataset by modifying the contents of the `Data/` folder.  
+> The code is modular and will work with any stock universe (e.g., S&P500, EuroStoxx50), as long as the formatting is respected (e.g., CSV format with consistent datetime index and price columns).
+
+> 🌿 **ESG Data**:  
+> You may include additional ESG metrics (e.g., carbon intensity) by placing them in the same folder and referencing them in the `dataESG` parameter.
+
+## References
+
+- Markowitz, H. (1952). *Portfolio Selection*, The Journal of Finance.
+- Markowitz, H. (1959). *Portfolio Selection: Efficient Diversification of Investments*, John Wiley & Sons.
+- Dichtl, H. (2020). *Investing in the S&P 500 index: Can anything beat the buy and hold strategy?*, Review of Financial Economics, 38(2), 352–378.
+- Roncalli, T., Guenedal, T. L., Lepetit, F., & Sekine, T. (2020). *Measuring and managing carbon risk in investment portfolios*, arXiv:2008.13198.
