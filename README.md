@@ -1,4 +1,4 @@
-Run App
-You need the folders Data and src
+Please check requirements.txt
+You need the folders Data and src to run app
 
-python -m streamlit run app.py
+Run App : python -m streamlit run app.py
