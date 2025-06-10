@@ -13,7 +13,6 @@ It is intended for asset managers—such as insurance companies—seeking to bui
 - ESG constraints and allocation rules
 - Backtesting using simulated or historical data
 - Risk metrics: variance, quantile loss, etc.
-- ESG integration (e.g. carbon risk)
 
 ## Technical Architecture
 
