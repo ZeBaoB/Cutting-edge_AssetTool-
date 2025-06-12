@@ -61,7 +61,7 @@ Orchestrates the simulation and evaluation of strategies.
 
 2. **Prepare your environment**
    - Install dependencies (suggested: use a virtualenv or conda environment)
-   ```bash
+   '''bash
    pip install -r requirements.txt
 
 4. **Launch Streamlit**
